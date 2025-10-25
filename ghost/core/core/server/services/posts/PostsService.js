@@ -1,5 +1,5 @@
 const nql = require('@tryghost/nql');
-const {BadRequestError} = require('@tryghost/errors');
+const { BadRequestError, ConflictError, NotFoundError } = require('@tryghost/errors');
 const tpl = require('@tryghost/tpl');
 const errors = require('@tryghost/errors');
 const ObjectId = require('bson-objectid').default;
@@ -17,7 +17,7 @@ const messages = {
 };
 
 class PostsService {
-    constructor({urlUtils, models, isSet, stats, emailService, postsExporter}) {
+    constructor({ urlUtils, models, isSet, stats, emailService, postsExporter }) {
         this.urlUtils = urlUtils;
         this.models = models;
         this.isSet = isSet;
@@ -66,7 +66,7 @@ class PostsService {
             if (frame.options.email_segment !== 'all') {
                 // check filter is valid
                 try {
-                    await this.models.Member.findPage({filter: frame.options.email_segment, limit: 1});
+                    await this.models.Member.findPage({ filter: frame.options.email_segment, limit: 1 });
                 } catch (err) {
                     return Promise.reject(new BadRequestError({
                         message: tpl(messages.invalidEmailSegment),
@@ -105,6 +105,72 @@ class PostsService {
 
         return dto;
     }
+
+    async suarLockPost(frame) {
+        const id = frame.options.id || frame.data?.posts?.[0]?.id;
+        const userId = frame?.user?.id || frame?.options?.context?.user?.id;
+
+        if (!id) {
+            throw new BadRequestError({ message: 'Missing post ID' });
+        }
+
+        if (!userId) {
+            throw new BadRequestError({ message: 'Missing User ID' });
+        }
+
+        const post = await this.models.Post.findOne({ id, status: 'all' });
+        if (!post) {
+            throw new NotFoundError({ message: 'Post not found' });
+        }
+
+        const existingLock = await this.models.SuarPostLock.where({ post_id: id }).fetch({ require: false, withRelated: ['user'] });
+        if (existingLock) {
+            throw new ConflictError({
+                message: 'Post is locked by another user',
+                context: { locked_by: existingLock.related('user').toJSON() }
+            });
+        }
+
+        await this.models.SuarPostLock.add({
+            post_id: id,
+            user_id: userId || null,
+            locked_at: new Date()
+        }, frame.options);
+
+        return {
+            id: post.id,
+            locked: true,
+            locked_by: userId
+        };
+    }
+
+    async suarUnlockPost(frame) {
+        const id = frame.options.id || frame.data?.posts?.[0]?.id;
+        if (!id) {
+            throw new BadRequestError({ message: 'Missing post ID' });
+        }
+
+        const post = await this.models.Post.findOne({ id, status: 'all' });
+        if (!post) {
+            throw new NotFoundError({ message: 'Post not found' });
+        }
+
+        const lock = await this.models.SuarPostLock.where({ post_id: id }).fetch({ require: false });
+        if (!lock) {
+            throw new ConflictError({ message: 'Post is not locked' });
+        }
+
+        await this.models.SuarPostLock
+            .query()
+            .where('post_id', id)
+            .del();
+
+        return {
+            id: post.id,
+            locked: false
+        };
+    }
+
     /**
      * @param {any} model
      * @returns {EventString}
@@ -141,16 +207,16 @@ class PostsService {
         } = require('../../../shared/events-ts');
 
         if (data.action === 'unpublish') {
-            const updateResult = await this.#updatePosts({status: 'draft'}, {filter: this.#mergeFilters('status:published', options.filter), context: options.context, actionName: 'unpublished'});
+            const updateResult = await this.#updatePosts({ status: 'draft' }, { filter: this.#mergeFilters('status:published', options.filter), context: options.context, actionName: 'unpublished' });
             DomainEvents.dispatch(PostsBulkUnpublishedEvent.create(updateResult.editIds));
 
             return updateResult;
         }
         if (data.action === 'unschedule') {
-            const updateResult = await this.#updatePosts({status: 'draft', published_at: null}, {filter: this.#mergeFilters('status:scheduled', options.filter), context: options.context, actionName: 'unscheduled'});
+            const updateResult = await this.#updatePosts({ status: 'draft', published_at: null }, { filter: this.#mergeFilters('status:scheduled', options.filter), context: options.context, actionName: 'unscheduled' });
             // makes sure `email_only` value is reverted for the unscheduled posts
             await this.models.Post.bulkEdit(updateResult.editIds, 'posts_meta', {
-                data: {email_only: false},
+                data: { email_only: false },
                 column: 'post_id',
                 transacting: options.transacting,
                 throwErrors: true
@@ -160,13 +226,13 @@ class PostsService {
             return updateResult;
         }
         if (data.action === 'feature') {
-            const updateResult = await this.#updatePosts({featured: true}, {filter: options.filter, context: options.context, actionName: 'featured'});
+            const updateResult = await this.#updatePosts({ featured: true }, { filter: options.filter, context: options.context, actionName: 'featured' });
             DomainEvents.dispatch(PostsBulkFeaturedEvent.create(updateResult.editIds));
 
             return updateResult;
         }
         if (data.action === 'unfeature') {
-            const updateResult = await this.#updatePosts({featured: false}, {filter: options.filter, context: options.context, actionName: 'unfeatured'});
+            const updateResult = await this.#updatePosts({ featured: false }, { filter: options.filter, context: options.context, actionName: 'unfeatured' });
             DomainEvents.dispatch(PostsBulkUnfeaturedEvent.create(updateResult.editIds));
 
             return updateResult;
@@ -186,7 +252,7 @@ class PostsService {
                 }
                 tiers = data.meta.tiers;
             }
-            return await this.#updatePosts({visibility: data.meta.visibility, tiers}, {filter: options.filter, context: options.context});
+            return await this.#updatePosts({ visibility: data.meta.visibility, tiers }, { filter: options.filter, context: options.context });
         }
         if (data.action === 'addTag') {
             if (!Array.isArray(data.meta.tags)) {
@@ -207,7 +273,7 @@ class PostsService {
                 }
             }
 
-            const bulkResult = await this.#bulkAddTags({tags: data.meta.tags}, {filter: options.filter, context: options.context});
+            const bulkResult = await this.#bulkAddTags({ tags: data.meta.tags }, { filter: options.filter, context: options.context });
             DomainEvents.dispatch(PostsBulkAddTagsEvent.create(bulkResult.editIds));
 
             return bulkResult;
@@ -239,7 +305,7 @@ class PostsService {
         // Create tags that don't exist
         for (const tag of data.tags) {
             if (!tag.id) {
-                const createdTag = await this.models.Tag.add(tag, {transacting: options.transacting, context: options.context});
+                const createdTag = await this.models.Tag.add(tag, { transacting: options.transacting, context: options.context });
                 tag.id = createdTag.id;
             }
         }
@@ -334,7 +400,7 @@ class PostsService {
 
         for (const table of emailTablesToSetNull) {
             await this.models.Post.bulkEdit(deleteEmailIds, table, {
-                data: {email_id: null},
+                data: { email_id: null },
                 column: 'email_id',
                 transacting: options.transacting,
                 throwErrors: true
@@ -342,8 +408,8 @@ class PostsService {
         }
 
         // Posts and emails
-        await this.models.Post.bulkDestroy(deleteEmailIds, 'emails', {transacting: options.transacting, throwErrors: true});
-        const result = await this.models.Post.bulkDestroy(deleteIds, 'posts', {...options, throwErrors: true});
+        await this.models.Post.bulkDestroy(deleteEmailIds, 'emails', { transacting: options.transacting, throwErrors: true });
+        const result = await this.models.Post.bulkDestroy(deleteIds, 'posts', { ...options, throwErrors: true });
 
         result.deleteIds = deleteIds;
 
@@ -352,7 +418,7 @@ class PostsService {
 
     async bulkDestroy(options) {
         const result = await this.#bulkDestroy(options);
-        const {PostsBulkDestroyedEvent} = require('../../../shared/events-ts');
+        const { PostsBulkDestroyedEvent } = require('../../../shared/events-ts');
         DomainEvents.dispatch(PostsBulkDestroyedEvent.create(result.deleteIds));
 
         return result;
@@ -518,9 +584,9 @@ class PostsService {
         newPostData.title = `${existingPost.attributes.title} (Copy)`;
         newPostData.status = 'draft';
         newPostData.authors = existingPost.related('authors')
-            .map(author => ({id: author.get('id')}));
+            .map(author => ({ id: author.get('id') }));
         newPostData.tags = existingPost.related('tags')
-            .map(tag => ({id: tag.get('id')}));
+            .map(tag => ({ id: tag.get('id') }));
 
         const existingPostMeta = existingPost.related('posts_meta');
 
@@ -547,7 +613,7 @@ class PostsService {
         const existingPostTiers = existingPost.related('tiers');
 
         if (existingPostTiers.length > 0) {
-            newPostData.tiers = existingPostTiers.map(tier => ({id: tier.get('id')}));
+            newPostData.tiers = existingPostTiers.map(tier => ({ id: tier.get('id') }));
         }
 
         return this.models.Post.add(newPostData, frame.options);

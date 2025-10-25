@@ -99,7 +99,7 @@ Post = ghostBookshelf.Model.extend({
         };
     },
 
-    relationships: ['tags', 'authors', 'mobiledoc_revisions', 'post_revisions', 'posts_meta', 'tiers'],
+    relationships: ['tags', 'authors', 'mobiledoc_revisions', 'post_revisions', 'posts_meta', 'tiers', 'suar_lock'],
     relationshipConfig: {
         tags: {
             editable: true
@@ -1011,6 +1011,10 @@ Post = ghostBookshelf.Model.extend({
 
     newsletter: function newsletter() {
         return this.belongsTo('Newsletter', 'newsletter_id');
+    },
+
+    suar_lock: function suarLock() {
+        return this.hasOne('SuarPostLock', 'post_id');
     },
 
     /**

@@ -1,6 +1,6 @@
 {
   "name": "ghost",
-  "version": "6.1.0",
+  "version": "6.1.1-suar",
   "description": "The professional publishing platform",
   "author": "Ghost Foundation",
   "homepage": "https://ghost.org",
@@ -86,7 +86,7 @@
     "@tryghost/helpers": "1.1.97",
     "@tryghost/html-to-plaintext": "1.0.4",
     "@tryghost/http-cache-utils": "0.1.20",
-    "@tryghost/i18n": "0.0.0",
+    "@tryghost/i18n": "file:components/tryghost-i18n-6.1.1-suar.tgz",
     "@tryghost/image-transform": "1.4.6",
     "@tryghost/job-manager": "1.0.3",
     "@tryghost/kg-card-factory": "5.1.2",
@@ -272,7 +272,8 @@
     "@tryghost/logging": "2.4.23",
     "jackspeak": "2.3.6",
     "moment": "2.24.0",
-    "moment-timezone": "0.5.45"
+    "moment-timezone": "0.5.45",
+    "@tryghost/i18n": "file:components/tryghost-i18n-6.1.1-suar.tgz"
   },
   "nx": {
     "targets": {

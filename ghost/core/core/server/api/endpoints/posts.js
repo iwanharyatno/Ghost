@@ -16,7 +16,9 @@ const allowedIncludes = [
     'count.positive_feedback',
     'count.negative_feedback',
     'post_revisions',
-    'post_revisions.author'
+    'post_revisions.author',
+    'suar_lock',
+    'suar_lock.user',
 ];
 const unsafeAttrs = ['status', 'authors', 'visibility'];
 
@@ -232,6 +234,48 @@ const controller = {
         }
     },
 
+    suarLock: {
+        headers: {
+            cacheInvalidate: false
+        },
+        options: [
+            "id"
+        ],
+        validation: {
+            options: {
+                id: { required: true }
+            }
+        },
+        permissions: {
+            method: 'edit'
+        },
+        async query(frame) {
+            const model = await postsService.suarLockPost(frame);
+            return model;
+        }
+    },
+
+    suarUnlock: {
+        headers: {
+            cacheInvalidate: false
+        },
+        options: [
+            "id"
+        ],
+        validation: {
+            options: {
+                id: { required: true }
+            }
+        },
+        permissions: {
+            method: 'edit'
+        },
+        async query(frame) {
+            const model = await postsService.suarUnlockPost(frame);
+            return model;
+        }
+    },
+
     bulkEdit: {
         statusCode: 200,
         headers: {
@@ -303,7 +347,7 @@ const controller = {
             unsafeAttrs: unsafeAttrs
         },
         query(frame) {
-            return models.Post.destroy({...frame.options, require: true});
+            return models.Post.destroy({ ...frame.options, require: true });
         }
     },
 

@@ -1,6 +1,6 @@
 const express = require('../../../../../shared/express');
 const api = require('../../../../api').endpoints;
-const {http} = require('@tryghost/api-framework');
+const { http } = require('@tryghost/api-framework');
 const apiMw = require('../../middleware');
 const mw = require('./middleware');
 
@@ -36,6 +36,11 @@ module.exports = function apiRoutes() {
     router.get('/posts/:id', mw.authAdminApi, http(api.posts.read));
     router.get('/posts/slug/:slug', mw.authAdminApi, http(api.posts.read));
     router.put('/posts/:id', mw.authAdminApi, http(api.posts.edit));
+
+    // Custom Suar.id Specific Endpoints
+    router.put('/posts/:id/suar-lock', mw.authAdminApi, http(api.posts.suarLock));
+    router.put('/posts/:id/suar-unlock', mw.authAdminApi, http(api.posts.suarUnlock));
+
     router.del('/posts/:id', mw.authAdminApi, http(api.posts.destroy));
     router.post('/posts/:id/copy', mw.authAdminApi, http(api.posts.copy));
 
@@ -75,7 +80,7 @@ module.exports = function apiRoutes() {
     router.post('/settings/routes/yaml',
         mw.authAdminApi,
         apiMw.upload.single('routes'),
-        apiMw.upload.validation({type: 'routes'}),
+        apiMw.upload.validation({ type: 'routes' }),
         http(api.settings.upload)
     );
 
@@ -132,7 +137,7 @@ module.exports = function apiRoutes() {
     router.post('/members/upload',
         mw.authAdminApi,
         apiMw.upload.single('membersfile'),
-        apiMw.upload.validation({type: 'members'}),
+        apiMw.upload.validation({ type: 'members' }),
         http(api.members.importCSV)
     );
 
@@ -199,7 +204,7 @@ module.exports = function apiRoutes() {
     router.post('/themes/upload',
         mw.authAdminApi,
         apiMw.upload.single('file'),
-        apiMw.upload.validation({type: 'themes'}),
+        apiMw.upload.validation({ type: 'themes' }),
         http(api.themes.upload)
     );
 
@@ -225,7 +230,7 @@ module.exports = function apiRoutes() {
     router.post('/db',
         mw.authAdminApi,
         apiMw.upload.single('importfile'),
-        apiMw.upload.validation({type: 'db'}),
+        apiMw.upload.validation({ type: 'db' }),
         http(api.db.importContent)
     );
     router.del('/db', mw.authAdminApi, http(api.db.deleteAllContent));
@@ -277,7 +282,7 @@ module.exports = function apiRoutes() {
     router.post('/images/upload',
         mw.authAdminApi,
         apiMw.upload.single('file'),
-        apiMw.upload.validation({type: 'images'}),
+        apiMw.upload.validation({ type: 'images' }),
         http(api.images.upload)
     );
 
@@ -285,13 +290,13 @@ module.exports = function apiRoutes() {
     router.post('/media/upload',
         mw.authAdminApi,
         apiMw.upload.media('file', 'thumbnail'),
-        apiMw.upload.mediaValidation({type: 'media'}),
+        apiMw.upload.mediaValidation({ type: 'media' }),
         http(api.media.upload)
     );
     router.put('/media/thumbnail/upload',
         mw.authAdminApi,
         apiMw.upload.single('file'),
-        apiMw.upload.validation({type: 'images'}),
+        apiMw.upload.validation({ type: 'images' }),
         http(api.media.uploadThumbnail)
     );
 
@@ -313,7 +318,7 @@ module.exports = function apiRoutes() {
     router.post('/redirects/upload',
         mw.authAdminApi,
         apiMw.upload.single('redirects'),
-        apiMw.upload.validation({type: 'redirects'}),
+        apiMw.upload.validation({ type: 'redirects' }),
         http(api.redirects.upload)
     );
 
