@@ -1,0 +1,18 @@
+<div class="suar-lock-modal">
+    <div class="suar-lock-alert">
+        {{#if this.selectedRevision.feature_image}}
+        <img src={{@model.suarLock.user.profile_image}} alt="" class="suar-lock-avatar">
+        {{/if}}
+
+        <h2 class="suar-lock-title">Post sedang dikunci</h2>
+
+        <p class="suar-lock-message">
+            Post ini sedang diedit oleh <strong>{{@model.suarLock.user.name}}</strong>.
+            ({{@model.suarLock.user.email}})
+        </p>
+
+        <button class="suar-lock-button" {{on "click" @closeModal}}>
+            Kembali ke daftar post
+        </button>
+    </div>
+</div>
