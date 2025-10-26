@@ -1,13 +1,12 @@
 import {test, expect} from '../../helpers/playwright';
 import {PostEditorPage} from '../../helpers/pages/admin';
-import {createPostFactory} from '../../data-factory';
-import type {PostFactory} from '../../data-factory';
+import {createPostFactory, PostFactory} from '../../data-factory';
 
 test.describe('Post Preview Modal', () => {
     let postFactory: PostFactory;
 
     test.beforeEach(async ({page}) => {
-        postFactory = createPostFactory(page);
+        postFactory = createPostFactory(page.request);
     });
 
     test('closes preview modal with ESC key when iframe has focus', async ({page}) => {

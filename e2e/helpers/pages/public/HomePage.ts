@@ -15,7 +15,13 @@ export class HomePage extends PublicPage {
         this.accountButton = page.locator('[data-portal="account"]').first();
     }
 
-    async waitForSignedIn(): Promise<void> {
-        await this.accountButton.waitFor({state: 'visible'});
+    async waitUntilLoaded(): Promise<void> {
+        return this.accountButton.waitFor({state: 'visible'});
+    }
+
+    async gotoWithQueryParams(params: Record<string, string>): Promise<void> {
+        const queryString = new URLSearchParams(params).toString();
+        const url = `/?${queryString}`;
+        await this.goto(url);
     }
 }
