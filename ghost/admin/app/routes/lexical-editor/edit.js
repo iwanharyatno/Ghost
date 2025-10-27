@@ -1,12 +1,19 @@
 import AuthenticatedRoute from 'ghost-admin/routes/authenticated';
-import {ALL_POST_INCLUDES} from '../../adapters/post';
-import {pluralize} from 'ember-inflector';
-import {inject as service} from '@ember/service';
+import { ALL_POST_INCLUDES } from '../../adapters/post';
+import { pluralize } from 'ember-inflector';
+import { inject as service } from '@ember/service';
 export default class EditRoute extends AuthenticatedRoute {
     @service feature;
+    @service suarLock;
 
-    beforeModel(transition) {
+    async beforeModel(transition) {
         super.beforeModel(...arguments);
+
+        let { post_id } = transition.to?.params || {};
+        if (post_id) {
+            // 🔒 Lock post sebelum model di-load
+            await this.suarLock.lock(post_id);
+        }
 
         // if the transition is not new->edit, reset the post on the controller
         // so that the editor view is cleared before showing the loading state
@@ -19,11 +26,11 @@ export default class EditRoute extends AuthenticatedRoute {
 
     async model(params, transition) {
         // eslint-disable-next-line camelcase
-        let {type: modelName, post_id} = params;
+        let { type: modelName, post_id } = params;
 
         if (!['post', 'page'].includes(modelName)) {
             let path = transition.intent.url.replace(/^\//, '');
-            return this.replaceWith('error404', {path, status: 404});
+            return this.replaceWith('error404', { path, status: 404 });
         }
 
         let query = {
@@ -39,7 +46,7 @@ export default class EditRoute extends AuthenticatedRoute {
 
         // CASE: Post is in mobiledoc — convert to lexical
         if (post.mobiledoc) {
-            post = await post.save({adapterOptions: {convertToLexical: 1}});
+            post = await post.save({ adapterOptions: { convertToLexical: 1 } });
         }
 
         return post;
@@ -62,6 +69,12 @@ export default class EditRoute extends AuthenticatedRoute {
         if (user.isContributor && !post.isDraft) {
             return this.replaceWith(returnRoute);
         }
+
+        this.router.on('routeWillChange', (transition) => {
+            if (transition.from?.name?.startsWith('lexical-editor.edit') && user.id == post.suarLock.user.id) {
+                this.suarLock.unlock(post.id);
+            }
+        });
     }
 
     serialize(model) {

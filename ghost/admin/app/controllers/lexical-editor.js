@@ -307,6 +307,12 @@ export default class LexicalEditorController extends Controller {
         return titleTk + excerptTk + this.postTkCount + this.featureImageTkCount;
     }
 
+    // SUAR.id Custom
+    @action
+    closeSuarLock() {
+        this.router.transitionTo('posts');
+    }
+
     @action
     updateScratch(lexical) {
         const lexicalString = JSON.stringify(lexical);
